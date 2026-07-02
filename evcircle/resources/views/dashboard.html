@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>EvCircle • Seller Portal | Manage Chargers & Subscription</title>
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            background: #0a0a0a;
+        }
+
+        /* refined animated background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: radial-gradient(ellipse at 40% 50%, #0e1a10 0%, #030905 60%, #000000 100%);
+            background-size: 200% 200%;
+            animation: slowMove 24s ease infinite alternate;
+        }
+
+        @keyframes slowMove {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(110px);
+            opacity: 0.28;
+            z-index: -1;
+            animation: floatSlow 26s infinite alternate ease-in-out;
+        }
+        .orb1 { width: 68vw; height: 68vw; background: radial-gradient(circle, rgba(76,175,80,0.28), rgba(0,80,30,0)); top: -30%; right: -20%; }
+        .orb2 { width: 58vw; height: 58vw; background: radial-gradient(circle, rgba(76,175,80,0.2), rgba(0,60,20,0)); bottom: -40%; left: -15%; animation-duration: 30s; }
+
+        /* dashboard container refined spacing */
+        .dashboard-container {
+            min-height: 100vh;
+            padding: 24px 28px 100px;
+            position: relative;
+            z-index: 2;
+            max-width: 1480px;
+            margin: 0 auto;
+        }
+
+        /* header - glassmorphic premium */
+        .dashboard-header {
+            background: rgba(12, 12, 14, 0.75);
+            backdrop-filter: blur(20px);
+            border-radius: 38px;
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        .dash-logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { width: 52px; height: 52px; background: linear-gradient(145deg, #4CAF50, #1e5a2a); border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 26px; color: white; box-shadow: 0 4px 12px rgba(76,175,80,0.3); }
+        .logo-text { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, #FFFFFF, #b9f6ca); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: -0.3px; }
+
+        .user-info-card { display: flex; align-items: center; gap: 18px; background: rgba(0,0,0,0.45); padding: 6px 20px 6px 14px; border-radius: 60px; border: 1px solid rgba(76, 175, 80, 0.3); backdrop-filter: blur(4px); }
+        .user-avatar { width: 46px; height: 46px; background: linear-gradient(135deg, #4CAF50, #2E7D32); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .user-details { text-align: right; }
+        .user-name { font-weight: 700; color: #FFFFFF; font-size: 16px; letter-spacing: -0.2px; }
+        .user-email { font-size: 12px; color: #bcdfc4; margin-top: 4px; opacity: 0.9; }
+        .logout-btn { background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.5); padding: 10px 24px; border-radius: 40px; color: #d0f0d4; font-weight: 600; cursor: pointer; transition: all 0.25s; font-size: 14px; backdrop-filter: blur(4px); }
+        .logout-btn:hover { background: rgba(76,175,80,0.35); color: white; transform: translateY(-2px); border-color: #4CAF50; }
+
+        /* stats grid modern */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 22px;
+            margin-bottom: 38px;
+        }
+        .stat-card {
+            background: rgba(20, 22, 24, 0.8);
+            backdrop-filter: blur(14px);
+            border-radius: 28px;
+            padding: 22px 26px;
+            border: 1px solid rgba(76, 175, 80, 0.2);
+            transition: all 0.25s ease;
+        }
+        .stat-card:hover { transform: translateY(-5px); border-color: rgba(76, 175, 80, 0.5); background: rgba(25, 30, 27, 0.85); }
+        .stat-icon { width: 52px; height: 52px; background: rgba(76,175,80,0.12); border-radius: 28px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 28px; }
+        .stat-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #a2e0ae; margin-bottom: 8px; font-weight: 600; }
+        .stat-value { font-size: 36px; font-weight: 800; color: white; margin-bottom: 6px; letter-spacing: -0.5px; }
+        .stat-sub { font-size: 12px; color: #bfdec6; }
+
+        /* navigation tabs refined */
+        .nav-tabs {
+            display: flex;
+            gap: 12px;
+            background: rgba(12, 14, 16, 0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 80px;
+            padding: 6px;
+            margin-bottom: 32px;
+            width: fit-content;
+            flex-wrap: wrap;
+        }
+        .nav-tab {
+            padding: 12px 28px;
+            border-radius: 60px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #c7e2ce;
+            background: transparent;
+            border: none;
+            backdrop-filter: blur(2px);
+        }
+        .nav-tab.active {
+            background: linear-gradient(115deg, #4CAF50, #246b2e);
+            color: white;
+            box-shadow: 0 6px 14px rgba(76, 175, 80, 0.3);
+        }
+        .nav-tab:hover:not(.active) { background: rgba(76, 175, 80, 0.2); color: white; }
+
+        /* form card modern minimal */
+        .form-card {
+            background: rgba(18, 20, 22, 0.85);
+            backdrop-filter: blur(18px);
+            border-radius: 36px;
+            padding: 36px;
+            border: 1px solid rgba(76, 175, 80, 0.25);
+            transition: all 0.2s;
+        }
+        .form-title { font-size: 26px; font-weight: 700; color: white; margin-bottom: 8px; letter-spacing: -0.3px; }
+        .form-subtitle { color: #bdd4c2; margin-bottom: 32px; font-size: 15px; border-left: 3px solid #4CAF50; padding-left: 14px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px; }
+        .form-group { margin-bottom: 22px; }
+        .form-label { display: block; color: #d0ecd6; font-size: 13px; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.3px; }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 34px;
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            background: rgba(0, 0, 0, 0.55);
+            color: white;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25); background: rgba(0,0,0,0.7); }
+
+        .map-container { margin-top: 12px; border-radius: 28px; overflow: hidden; border: 1px solid rgba(76, 175, 80, 0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        #locationMap { width: 100%; height: 320px; background: #1e2a1e; }
+        .location-info { margin-top: 12px; padding: 12px 18px; background: rgba(0, 0, 0, 0.55); border-radius: 28px; font-size: 13px; color: #cfecd6; backdrop-filter: blur(4px); }
+        .pick-location-btn { margin-top: 14px; padding: 12px 24px; background: rgba(76, 175, 80, 0.18); border: 1px solid rgba(76, 175, 80, 0.5); border-radius: 48px; color: #b6ffcc; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; width: fit-content; }
+        .pick-location-btn:hover { background: rgba(76, 175, 80, 0.35); color: white; }
+
+        /* chargers grid organized */
+        .chargers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+            margin-top: 28px;
+        }
+        .charger-card {
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 28px;
+            padding: 22px;
+            border: 1px solid rgba(76, 175, 80, 0.25);
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .charger-card:hover { border-color: rgba(76, 175, 80, 0.55); transform: translateY(-3px); background: rgba(10, 20, 12, 0.7); }
+        .charger-name { font-size: 19px; font-weight: 700; color: white; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .charger-detail { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+        .detail-label { color: #b4dabe; font-weight: 500; }
+        .detail-value { color: white; font-weight: 500; }
+
+        /* plan cards refined */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 26px;
+            margin-top: 28px;
+        }
+        .plan-card {
+            background: rgba(12, 14, 16, 0.75);
+            border-radius: 32px;
+            padding: 28px 20px;
+            border: 1px solid rgba(76, 175, 80, 0.25);
+            transition: all 0.25s;
+            cursor: pointer;
+            position: relative;
+            backdrop-filter: blur(8px);
+        }
+        .plan-card:hover { transform: translateY(-5px); border-color: #4CAF70; background: rgba(30, 40, 32, 0.8); }
+        .plan-card.selected { border-color: #4CAF50; background: linear-gradient(145deg, rgba(76, 175, 80, 0.12), rgba(0, 40, 0, 0.3)); box-shadow: 0 0 0 1px #4CAF50 inset; }
+        .plan-badge { position: absolute; top: -10px; right: 20px; background: linear-gradient(135deg, #FFB347, #FF6B3D); padding: 5px 14px; border-radius: 40px; font-size: 11px; font-weight: 800; color: white; letter-spacing: 0.5px; }
+        .free-badge { position: absolute; top: -10px; left: 20px; background: linear-gradient(135deg, #4CAF50, #2E8B57); padding: 5px 16px; border-radius: 40px; font-size: 11px; font-weight: 800; color: white; }
+        .plan-name { font-size: 24px; font-weight: 800; color: white; margin-bottom: 8px; }
+        .plan-duration { font-size: 14px; color: #b9e0c2; margin-bottom: 18px; }
+        .plan-price { font-size: 32px; font-weight: 800; color: #4CAF50; margin-bottom: 20px; }
+        .plan-quantity { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 20px 0; }
+        .qty-btn { width: 40px; height: 40px; border-radius: 30px; background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.5); color: #b6ffcc; font-size: 22px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .qty-btn:hover { background: #4CAF50; color: black; }
+        .qty-value { font-size: 22px; font-weight: 700; color: white; min-width: 48px; text-align: center; }
+
+        /* subscription + referral cards */
+        .subscription-card {
+            background: linear-gradient(125deg, rgba(50, 80, 55, 0.35), rgba(20, 30, 22, 0.7));
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 28px;
+            backdrop-filter: blur(8px);
+        }
+        .subscription-status { padding: 5px 14px; border-radius: 40px; font-size: 12px; font-weight: 800; display: inline-block; }
+        .status-active { background: #2e7d32; color: white; box-shadow: 0 0 6px #4CAF50; }
+        .status-expiring { background: #ed8936; color: #1a1a1a; }
+        .status-expired { background: #c53030; color: white; }
+        
+        .referral-section {
+            background: rgba(10, 18, 12, 0.7);
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 28px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        .referral-code {
+            background: rgba(46, 125, 50, 0.2);
+            border: 1px solid #4CAF50;
+            border-radius: 20px;
+            padding: 14px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #b9f6ca;
+        }
+        .progress-bar { height: 10px; background: rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; margin: 12px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #9bffb0); border-radius: 8px; width: 0%; }
+        .activate-referral-btn { background: #2e7d32; border: none; padding: 7px 18px; border-radius: 34px; color: white; font-size: 12px; font-weight: 700; cursor: pointer; margin-left: 12px; transition: 0.2s; }
+        .activate-referral-btn:hover { background: #4CAF50; transform: scale(1.02); }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(105deg, #2e7d32, #1b5e20);
+            border: none;
+            border-radius: 60px;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s;
+            margin-top: 20px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }
+        .submit-btn:hover { transform: translateY(-2px); background: linear-gradient(105deg, #4CAF50, #2e7d32); box-shadow: 0 10px 24px rgba(76,175,80,0.3); }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toast-msg {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e2a1ed9;
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 12px 28px;
+            border-radius: 60px;
+            font-size: 14px;
+            z-index: 2100;
+            opacity: 0;
+            transition: opacity 0.25s;
+            pointer-events: none;
+            border-left: 5px solid #4CAF50;
+            font-weight: 500;
+        }
+        .toast-msg.show { opacity: 1; }
+
+        @media (max-width: 720px) {
+            .dashboard-container { padding: 16px; }
+            .form-card { padding: 22px; }
+            .form-grid { grid-template-columns: 1fr; gap: 12px; }
+            .nav-tab { padding: 8px 18px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="animated-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div id="appRoot"><div style="display: flex; justify-content: center; align-items: center; height: 100vh;"><div class="loading-spinner"></div><span style="color: white; margin-left: 14px;">Loading secure dashboard...</span></div></div>
+
+<script>
+    const API_URL = "https://evcircle.lk/api";
+    const API_KEY = "REPLACE_WITH_API_KEY";
+    const STORAGE = { TOKEN: "access_token", USER: "evcircle_user_data" };
+    let currentMap = null, currentMarker = null;
+    let selectedLocation = { lat: 6.9271, lng: 79.8612 };
+    let currentUser = null, accessToken = null;
+    let plansData = [], selectedPlanIndex = 0, planQuantities = [];
+    let currentSubscription = null, referralData = null, referralGoals = [], userChargers = [];
+
+    function showToast(msg, isErr = false) {
+        let toast = document.getElementById("globalToastMsg");
+        if (!toast) { toast = document.createElement("div"); toast.id = "globalToastMsg"; toast.className = "toast-msg"; document.body.appendChild(toast); }
+        toast.textContent = msg;
+        toast.style.borderLeftColor = isErr ? "#f97316" : "#4CAF50";
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3100);
+    }
+
+    function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+    function formatDateTime(isoString) { if (!isoString) return 'N/A'; return new Date(isoString).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute:'2-digit', hour12: true }); }
+    function getAuthHeaders() { return { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'X-API-KEY': API_KEY }; }
+
+    async function fetchPlans() {
+        try {
+            const res = await fetch(`${API_URL}/subscription-plans`, { headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json', 'X-API-KEY': API_KEY } });
+            if (!res.ok) throw new Error();
+            let result = await res.json();
+            const now = new Date();
+            let active = result.filter(p => !p.end_date || new Date(p.end_date) > now);
+            active.sort((a,b) => (parseFloat(a.price)||0) - (parseFloat(b.price)||0));
+            plansData = active;
+            planQuantities = active.map(()=>1);
+            return plansData;
+        } catch(e) {
+            plansData = [
+                { id: '1', name: 'Free Plan', duration: '1 Day', days: 1, price: '0.00', popular: false },
+                { id: '2', name: 'Day Plan', duration: '1 Day', days: 1, price: '300.00', popular: false },
+                { id: '3', name: 'Weekly Plan', duration: '7 Days', days: 7, price: '1750.00', popular: true },
+                { id: '4', name: 'Monthly Plan', duration: '30 Days', days: 30, price: '5000.00', popular: false }
+            ];
+            planQuantities = plansData.map(()=>1);
+            return plansData;
+        }
+    }
+
+    async function fetchCurrentSubscription() {
+        try {
+            const res = await fetch(`${API_URL}/subscription-plans`, { headers: getAuthHeaders() });
+            if (res.ok) { const data = await res.json(); currentSubscription = data.data || data; return currentSubscription; }
+        } catch(e) {}
+        return null;
+    }
+
+    async function fetchReferralData() {
+        try {
+            const res = await fetch(`${API_URL}/referrals`, { headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json', 'X-API-KEY': API_KEY } });
+            if (res.ok) { const data = await res.json(); referralData = data.data || data; 
+                referralGoals = [
+                    { type: 'day', required: 3, rewardDays: 1, current: referralData.day_referrals || 0, completed: (referralData.day_referrals||0) >= 3 },
+                    { type: 'week', required: 5, rewardDays: 7, current: referralData.week_referrals || 0, completed: (referralData.week_referrals||0) >= 5 },
+                    { type: 'month', required: 10, rewardDays: 30, current: referralData.month_referrals || 0, completed: (referralData.month_referrals||0) >= 10 }
+                ]; return referralData; }
+        } catch(e) {}
+        referralData = { code: 'EVCIRCLE2025', total_earned: 0, balance: 0, day_referrals: 0, week_referrals: 0, month_referrals: 0 };
+        referralGoals = [
+            { type: 'day', required: 3, rewardDays: 1, current: 0, completed: false },
+            { type: 'week', required: 5, rewardDays: 7, current: 0, completed: false },
+            { type: 'month', required: 10, rewardDays: 30, current: 0, completed: false }
+        ];
+        return referralData;
+    }
+
+    async function activateReferralPackage(type, days) {
+        try {
+            const res = await fetch(`${API_URL}/activate-referral`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'X-API-KEY': API_KEY }, body: JSON.stringify({ date_to: new Date(Date.now() + days * 86400000).toISOString().split('T')[0], amount: days, type: type }) });
+            if (!res.ok) throw new Error();
+            showToast(`✨ ${type} referral package activated (${days} days free!)`);
+            await fetchReferralData(); renderSubscriptionPlans();
+        } catch(e) { showToast('Activation failed', true); }
+    }
+
+    async function fetchUserChargers() {
+        try {
+            const res = await fetch(`${API_URL}/getUserChargers`, { headers: getAuthHeaders() });
+            if (res.ok) { const data = await res.json(); userChargers = data.data || data || []; return userChargers; }
+        } catch(e) { userChargers = []; }
+        return userChargers;
+    }
+
+    async function registerCharger(chargerData) {
+        try {
+            const res = await fetch(`${API_URL}/register-charger`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'X-API-KEY': API_KEY }, body: JSON.stringify(chargerData) });
+            const data = await res.json();
+            if (res.ok) { showToast("✅ Charger registered successfully!"); await fetchUserChargers(); return { success: true }; }
+            else { showToast(data.message || 'Registration failed', true); return { success: false }; }
+        } catch(e) { showToast('Network error', true); return { success: false }; }
+    }
+
+    async function activateSubscription(planId, quantity, totalDays, totalPrice) {
+        try {
+            const endDate = new Date(Date.now() + totalDays * 86400000).toISOString().split('T')[0];
+            const res = await fetch(`${API_URL}/subscribed`, { method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-API-KEY': API_KEY }, body: JSON.stringify({ date_to: endDate, duration: totalDays, price: totalPrice, start_date: new Date().toISOString().split('T')[0] }) });
+            const data = await res.json();
+            if (res.ok) { if(totalPrice === 0) { showToast("✅ Free subscription activated!"); await fetchCurrentSubscription(); renderSubscriptionPlans(); return { success: true }; } else { showToast(`💰 Proceed to payment: LKR ${totalPrice.toFixed(2)}`); return { success: true, redirect: true }; } }
+            else { showToast(data.message || 'activation failed', true); return { success: false }; }
+        } catch(e) { showToast('Network error', true); return { success: false }; }
+    }
+
+    function initMap(lat, lng, onSelect) {
+        if (currentMap) currentMap.remove();
+        currentMap = L.map('locationMap').setView([lat, lng], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM', subdomains: 'abcd', maxZoom: 19 }).addTo(currentMap);
+        const greenIcon = L.divIcon({ html: '<div style="background:#4CAF50; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:3px solid white;"><span style="font-size:18px;">⚡</span></div>', iconSize: [34,34], popupAnchor: [0,-16] });
+        currentMarker = L.marker([lat, lng], { icon: greenIcon, draggable: true }).addTo(currentMap);
+        currentMarker.on('dragend', e => { const pos = e.target.getLatLng(); selectedLocation = { lat: pos.lat, lng: pos.lng }; if(onSelect) onSelect(pos.lat, pos.lng); });
+        currentMap.on('click', e => { selectedLocation = { lat: e.latlng.lat, lng: e.latlng.lng }; currentMarker.setLatLng(e.latlng); if(onSelect) onSelect(e.latlng.lat, e.latlng.lng); });
+    }
+
+    async function handleRegisterCharger(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const orig = btn.innerHTML; btn.innerHTML = '<span class="loading-spinner"></span> Registering...'; btn.disabled = true;
+        const stationName = document.getElementById('stationName')?.value.trim();
+        const chargerType = document.getElementById('chargerType')?.value, powerType = document.getElementById('powerType')?.value, connectorType = document.getElementById('connectorType')?.value, powerOutput = document.getElementById('powerOutput')?.value, pricePerKwh = document.getElementById('pricePerKwh')?.value, promoCode = document.getElementById('promoCode')?.value;
+        if (!stationName || !chargerType || !powerType || !connectorType || !powerOutput || !pricePerKwh) { showToast("Please fill all required fields", true); btn.innerHTML = orig; btn.disabled = false; return; }
+        const result = await registerCharger({ station_name: stationName, latitude: selectedLocation.lat, longitude: selectedLocation.lng, location: `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`, charger_type: chargerType, power_type: powerType, connector_type: connectorType, power_output: parseFloat(powerOutput), price_per_kwh: parseFloat(pricePerKwh), promo_code: promoCode || null });
+        if (result.success) { document.getElementById('registerForm')?.reset(); selectedLocation = { lat: 6.9271, lng: 79.8612 }; if(currentMap && currentMarker) { currentMap.setView([selectedLocation.lat, selectedLocation.lng], 15); currentMarker.setLatLng([selectedLocation.lat, selectedLocation.lng]); } updateStats(); document.querySelector('.nav-tab[data-tab="chargers"]')?.click(); }
+        btn.innerHTML = orig; btn.disabled = false;
+    }
+
+    function updateQuantity(idx, delta) { if(parseFloat(plansData[idx].price) !== 0 && planQuantities[idx] + delta >= 1) planQuantities[idx] += delta; renderSubscriptionPlans(); }
+    function updateStats() { const statEl = document.querySelectorAll('.stat-value'); if(statEl[0]) statEl[0].textContent = userChargers.length; const totalEarnings = userChargers.reduce((s,c)=>s+(parseFloat(c.price_per_kwh)||0),0); if(statEl[1]) statEl[1].textContent = `LKR ${totalEarnings.toLocaleString()}`; }
+
+    function renderRegisterCharger() {
+        document.getElementById('dynamicContent').innerHTML = `<div class="form-card"><h2 class="form-title"> Register Charging Station</h2><p class="form-subtitle">Pin location on map & fill details — all fields with * are required</p><form id="registerForm"><div class="form-grid"><div><div class="form-group"><label class="form-label">🔋 Station Name *</label><input type="text" id="stationName" class="form-input" placeholder="e.g., GreenCharge Hub" required></div><div class="form-group"><label class="form-label">⚡ Charger Type *</label><select id="chargerType" class="form-select" required><option value="">Select</option><option value="slow">Slow Charger (3-7 kW)</option><option value="fast">Fast Charger (22-50 kW)</option><option value="ultra_fast">Ultra-Fast (150-350 kW)</option></select></div><div class="form-group"><label class="form-label">🔌 Power Type *</label><select id="powerType" class="form-select" required><option value="">Select</option><option value="ac">AC Charger</option><option value="dc">DC Charger</option></select></div></div><div><div class="form-group"><label class="form-label">🔌 Connector Type *</label><select id="connectorType" class="form-select" required><option value="">Select</option><option value="type2">Type 2</option><option value="ccs2">CCS2</option><option value="chademo">CHAdeMO</option></select></div><div class="form-group"><label class="form-label">📊 Power Output (kW) *</label><input type="number" id="powerOutput" class="form-input" placeholder="e.g., 50" step="0.1" required></div><div class="form-group"><label class="form-label">💰 Price Per kWh (LKR) *</label><input type="number" id="pricePerKwh" class="form-input" placeholder="e.g., 65.00" step="0.01" required></div><div class="form-group"><label class="form-label">🎫 Promo Code (Optional)</label><input type="text" id="promoCode" class="form-input" placeholder="Optional"></div></div></div><div class="form-group"><label class="form-label">🗺️ Set Location *</label><div class="map-container"><div id="locationMap"></div></div><div class="location-info" id="latLngDisplay">📍 Click map or drag marker</div></div><button type="submit" class="submit-btn"> Register Charger</button></form></div>`;
+        initMap(selectedLocation.lat, selectedLocation.lng, (lat,lng)=> document.getElementById('latLngDisplay').innerHTML = ` Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
+        document.getElementById('useMyLocationBtn')?.addEventListener('click',()=>{ if(navigator.geolocation) navigator.geolocation.getCurrentPosition(pos=>{ selectedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }; if(currentMap) currentMap.setView([selectedLocation.lat, selectedLocation.lng], 15); if(currentMarker) currentMarker.setLatLng([selectedLocation.lat, selectedLocation.lng]); showToast("📍 Location detected"); }); });
+        document.getElementById('registerForm')?.addEventListener('submit', handleRegisterCharger);
+    }
+
+    function renderMyChargers() {
+        document.getElementById('dynamicContent').innerHTML = `<div class="form-card"><h2 class="form-title">📋 My Chargers</h2><p class="form-subtitle">Manage your registered stations</p><div id="chargersListContainer" class="chargers-grid">${userChargers.length===0?'<div style="text-align:center;padding:60px;color:#bdd4c2;">No chargers added yet. Go to “Register Charger” tab. </div>':userChargers.map(c=>`<div class="charger-card"><div class="charger-name"> ${escapeHtml(c.station_name)}</div><div class="charger-detail"><span class="detail-label">📍 Location</span><span class="detail-value">${escapeHtml(c.location||`${c.latitude}, ${c.longitude}`)}</span></div><div class="charger-detail"><span class="detail-label">🔌 Type</span><span class="detail-value">${escapeHtml(c.charger_type)} / ${escapeHtml(c.power_type)}</span></div><div class="charger-detail"><span class="detail-label">⚡ Power</span><span class="detail-value">${c.power_output} kW</span></div><div class="charger-detail"><span class="detail-label">💰 Price/kWh</span><span class="detail-value">LKR ${parseFloat(c.price_per_kwh).toLocaleString()}</span></div></div>`).join('')}</div></div>`;
+    }
+
+    function renderSubscriptionPlans() {
+        const now = new Date(), subEnd = currentSubscription?.end_date ? new Date(currentSubscription.end_date) : null, hoursLeft = subEnd ? (subEnd-now)/3600000 : 0, isExpiring = hoursLeft>0 && hoursLeft<=48, isExpired = hoursLeft<=0;
+        const subHtml = currentSubscription ? `<div class="subscription-card"><div style="display:flex;justify-content:space-between;"><strong style="color:white;">📅 Current Subscription</strong><span class="subscription-status ${isExpired?'status-expired':(isExpiring?'status-expiring':'status-active')}">${isExpired?'Expired':(isExpiring?'Expiring soon':'Active')}</span></div><div style="margin-top:12px;"><strong style="color:#a5f0b0;">${escapeHtml(currentSubscription.plan_name||'Active Plan')}</strong></div><div style="font-size:13px;">Start: ${formatDateTime(currentSubscription.start_date)}</div><div style="font-size:13px;">End: ${formatDateTime(currentSubscription.end_date)}</div>${isExpiring&&!isExpired?`<div style="margin-top:8px;color:#fb923c;">⚠️ Expires in ${Math.ceil(hoursLeft)} hours</div>`:''}</div>`:'';
+        const refHtml = `<div class="referral-section"><h3 style="color:white;margin-bottom:14px;">🎁 Referral Rewards</h3><div class="referral-code">${escapeHtml(referralData?.code||'EVCIRCLE2025')}</div><div style="display:flex;justify-content:space-between;margin:12px 0;"><div><span style="color:#c0e0c8;">Earned:</span><br><strong style="color:#4CAF50;">LKR ${(referralData?.total_earned||0).toLocaleString()}</strong></div><div><span style="color:#c0e0c8;">Balance:</span><br><strong style="color:#4CAF50;">LKR ${(referralData?.balance||0).toLocaleString()}</strong></div></div>${referralGoals.map(g=>`<div><div style="display:flex;justify-content:space-between;font-size:12px;"><span>${g.type.toUpperCase()} (${g.required})</span><span>${g.current}/${g.required}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,(g.current/g.required)*100)}%"></div></div>${g.completed?`<div style="margin-top:8px;"><span style="color:#4CAF50;">✓ Reward: ${g.rewardDays} days free!</span><button class="activate-referral-btn" onclick="window.activateReferralGoal('${g.type}',${g.rewardDays})">Activate</button></div>`:`<div style="font-size:11px;color:#bdd4c2;">Need ${g.required-g.current} more referrals → ${g.rewardDays} days free</div>`}</div>`).join('')}</div>`;
+        const plansHtml = `<div class="form-card"><h2 class="form-title">🚀 Subscription Plans</h2><p class="form-subtitle">Choose & scale your EV business</p><div class="plans-grid" id="plansGrid">${plansData.map((p,idx)=>`<div class="plan-card ${selectedPlanIndex===idx?'selected':''}" onclick="window.selectPlan(${idx})">${p.popular?'<div class="plan-badge">🔥 POPULAR</div>':''}${parseFloat(p.price)===0?'<div class="free-badge">FREE</div>':''}<div class="plan-name">${escapeHtml(p.name)}</div><div class="plan-duration">⏱️ ${escapeHtml(p.duration)}</div><div class="plan-price">${parseFloat(p.price)===0?'FREE':`LKR ${parseFloat(p.price).toLocaleString()}`}</div>${parseFloat(p.price)>0?`<div class="plan-quantity"><button class="qty-btn" onclick="event.stopPropagation(); window.updateQty(${idx}, -1)">-</button><span class="qty-value">${planQuantities[idx]}</span><button class="qty-btn" onclick="event.stopPropagation(); window.updateQty(${idx}, 1)">+</button></div><div style="text-align:center;margin-top:12px;"><span style="color:#A0C0A8;">Total: </span><strong style="color:#4CAF50;font-size:18px;">LKR ${(parseFloat(p.price)*planQuantities[idx]).toLocaleString()}</strong><span style="font-size:11px;"> for ${p.days*planQuantities[idx]} days</span></div>`:''}</div>`).join('')}</div><button class="submit-btn" id="activateSubscriptionBtn"> Activate Subscription</button></div>`;
+        document.getElementById('dynamicContent').innerHTML = subHtml + refHtml + plansHtml;
+        document.getElementById('activateSubscriptionBtn')?.addEventListener('click', async()=>{ const plan=plansData[selectedPlanIndex]; if(plan){ const qty=planQuantities[selectedPlanIndex]; const totalPrice=parseFloat(plan.price)*qty; const totalDays=plan.days*qty; const btn=document.getElementById('activateSubscriptionBtn'); const orig=btn.innerHTML; btn.innerHTML='<span class="loading-spinner"></span> activating...'; btn.disabled=true; await activateSubscription(plan.id,qty,totalDays,totalPrice); btn.innerHTML=orig; btn.disabled=false; } });
+    }
+
+    function clearAuthAndLogout(){ localStorage.clear(); showToast("Logged out"); setTimeout(()=>window.location.href="/login",600); }
+
+    async function renderMainDashboard() {
+        const firstName = currentUser?.first_name || 'Seller', email = currentUser?.email || 'seller@evcircle.com', initials = firstName.charAt(0).toUpperCase();
+        document.getElementById("appRoot").innerHTML = `<div class="dashboard-container"><div class="dashboard-header"><div class="dash-logo"> <img src="https://evcircle.lk/logo.png" alt="EvCircle Logo" style="width: 50px; height: 50px;"> <div class="logo-text">EvCircle Seller</div></div><div class="user-info-card"><div class="user-avatar">${escapeHtml(initials)}</div><div class="user-details"><div class="user-name">${escapeHtml(firstName)}</div><div class="user-email">${escapeHtml(email)}</div></div><button id="logoutButton" class="logout-btn">Logout</button></div></div><div class="stats-grid"><div class="stat-card"><div class="stat-icon">🔋</div><div class="stat-title">Total Chargers</div><div class="stat-value">${userChargers.length}</div><div class="stat-sub">active stations</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-title">Est. Earnings</div><div class="stat-value">LKR ${userChargers.reduce((s,c)=>s+(parseFloat(c.price_per_kwh)||0),0).toLocaleString()}</div><div class="stat-sub">avg. price per kWh</div></div><div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-title">Seller Status</div><div class="stat-value">Verified</div><div class="stat-sub">premium seller</div></div></div><div class="nav-tabs"><button class="nav-tab active" data-tab="register"> Register Charger</button><button class="nav-tab" data-tab="chargers"> My Chargers (${userChargers.length})</button><button class="nav-tab" data-tab="subscription"> Subscription & Referrals</button></div><div id="dynamicContent"></div></div>`;
+        document.getElementById("logoutButton")?.addEventListener("click", clearAuthAndLogout);
+        document.querySelectorAll('.nav-tab').forEach(tab=>{ tab.addEventListener('click',()=>{ document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active'); if(tab.dataset.tab==='register') renderRegisterCharger(); else if(tab.dataset.tab==='chargers') renderMyChargers(); else if(tab.dataset.tab==='subscription') renderSubscriptionPlans(); }); });
+        renderRegisterCharger();
+    }
+
+    async function initDashboard() {
+        accessToken = localStorage.getItem(STORAGE.TOKEN);
+        const userStr = localStorage.getItem(STORAGE.USER);
+        if (!accessToken || !userStr) { window.location.href = "/login"; return; }
+        currentUser = JSON.parse(userStr);
+        await Promise.all([fetchPlans(), fetchCurrentSubscription(), fetchReferralData(), fetchUserChargers()]);
+        renderMainDashboard();
+    }
+    window.selectPlan = (idx) => { selectedPlanIndex = idx; renderSubscriptionPlans(); };
+    window.updateQty = (idx, delta) => updateQuantity(idx, delta);
+    window.activateReferralGoal = (type, days) => activateReferralPackage(type, days);
+    initDashboard();
+</script>
+</body>
+</html>

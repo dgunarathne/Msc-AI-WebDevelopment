@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>EvCircle • Sign In</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Dark Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: radial-gradient(ellipse at 30% 40%, #0a1a0f 0%, #020805 50%, #000000 100%);
+            background-size: 200% 200%;
+            animation: slowMove 20s ease infinite alternate;
+        }
+
+        @keyframes slowMove {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* Glowing Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            z-index: -1;
+            animation: floatSlow 22s infinite alternate ease-in-out;
+        }
+
+        .orb1 {
+            width: 70vw;
+            height: 70vw;
+            background: radial-gradient(circle, rgba(0,255,100,0.25), rgba(0,80,30,0));
+            top: -30%;
+            right: -20%;
+        }
+
+        .orb2 {
+            width: 55vw;
+            height: 55vw;
+            background: radial-gradient(circle, rgba(0,220,80,0.2), rgba(0,60,20,0));
+            bottom: -40%;
+            left: -15%;
+            animation-duration: 28s;
+        }
+
+        .orb3 {
+            width: 45vw;
+            height: 45vw;
+            background: radial-gradient(circle, rgba(80,255,130,0.15), rgba(0,40,15,0));
+            top: 40%;
+            left: 25%;
+            animation-duration: 18s;
+        }
+
+        @keyframes floatSlow {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(8%, 10%) scale(1.15); }
+        }
+
+        /* Particle Canvas */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Login Container */
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* WHITE CARD - Modern Professional */
+        .login-container {
+            max-width: 460px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            animation: fadeSlideUp 0.5s ease-out;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-container:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4);
+        }
+
+        .brand-area {
+            padding: 2rem 2rem 0.5rem;
+            text-align: center;
+        }
+
+        .ev-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .ev-icon {
+            /* background: linear-gradient(135deg, #00b85a, #008c42); */
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.8rem;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0, 184, 90, 0.25);
+        }
+
+        .brand-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a2a1f;
+            letter-spacing: -0.3px;
+        }
+
+        .tagline {
+            font-size: 0.8rem;
+            color: #6b7c6e;
+            margin-top: 0.25rem;
+        }
+
+        .form-wrapper {
+            padding: 1.5rem 2rem 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.3rem;
+        }
+
+        .input-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2d3e2f;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 1rem;
+            border: 1.5px solid #e2e8e6;
+            background: #fafcfb;
+            color: #1a2a1f;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .input-field:focus {
+            border-color: #00b85a;
+            box-shadow: 0 0 0 3px rgba(0, 184, 90, 0.12);
+            background: #ffffff;
+        }
+
+        .input-field::placeholder {
+            color: #b8c4bb;
+        }
+
+        .error-message {
+            font-size: 0.7rem;
+            color: #e5484d;
+            margin-top: 0.3rem;
+            margin-left: 0.3rem;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.9rem;
+            border-radius: 1rem;
+            border: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: white;
+            background: linear-gradient(95deg, #00b85a, #008c42);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-top: 0.3rem;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(0, 184, 90, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .auth-footer {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #e9efe9;
+        }
+
+        .footer-link {
+            background: transparent;
+            border: none;
+            color: #000;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-weight: 500;
+            padding: 0.3rem 0.8rem;
+            border-radius: 2rem;
+        }
+
+        .footer-link:hover {
+            color: #008c42;
+            background: rgba(0, 184, 90, 0.08);
+        }
+
+        .toast-msg {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e2f24e6;
+            backdrop-filter: blur(14px);
+            color: #d5ffe5;
+            padding: 0.75rem 1.6rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            border-left: 4px solid #00ff88;
+            font-weight: 500;
+        }
+
+        .toast-msg.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 550px) {
+            .form-wrapper { padding: 1.3rem; }
+            .brand-name { font-size: 1.7rem; }
+            .auth-footer { flex-direction: column; align-items: stretch; }
+            .footer-link { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="animated-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<canvas id="particleCanvas"></canvas>
+
+<div id="appRoot"></div>
+
+<script>
+    // ============================================
+    // EvCircle Login Page - White Card Version
+    // API: https://evcircle.lk/api/login
+    // Stores data in localStorage, redirects to dashboard
+    // ============================================
+    
+    const API_URL = "https://evcircle.lk/api/login";
+    const API_KEY = "REPLACE_WITH_API_KEY";
+    
+    const STORAGE = {
+        TOKEN: "evcircle_access_token",
+        TOKEN_TYPE: "evcircle_token_type",
+        USER: "evcircle_user_data",
+        FULL_RESP: "evcircle_full_response"
+    };
+
+    // Particle System
+    function initParticles() {
+        const canvas = document.getElementById('particleCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animationId;
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        function createParticles() {
+            const count = Math.min(65, Math.floor(window.innerWidth / 20));
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 2.5 + 1,
+                    alpha: Math.random() * 0.4 + 0.1,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.3,
+                });
+            }
+        }
+        
+        function draw() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let p of particles) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(70, 255, 120, ${p.alpha * 0.5})`;
+                ctx.fill();
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = canvas.width;
+                if (p.x > canvas.width) p.x = 0;
+                if (p.y < 0) p.y = canvas.height;
+                if (p.y > canvas.height) p.y = 0;
+            }
+            animationId = requestAnimationFrame(draw);
+        }
+        
+        window.addEventListener('resize', () => { resize(); createParticles(); });
+        resize();
+        createParticles();
+        draw();
+        return () => cancelAnimationFrame(animationId);
+    }
+    initParticles();
+
+    // Toast helper
+    function showToast(msg, isErr = false) {
+        let toast = document.getElementById("globalToastMsg");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "globalToastMsg";
+            toast.className = "toast-msg";
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.background = isErr ? "#c0392be6" : "#1e5a3ae6";
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    // Storage Helpers
+    function saveLoginData(response) {
+        if (response.access_token) {
+            localStorage.setItem(STORAGE.TOKEN, response.access_token);
+            localStorage.setItem(STORAGE.TOKEN_TYPE, response.token_type || "Bearer");
+        }
+        if (response.user) {
+            localStorage.setItem(STORAGE.USER, JSON.stringify(response.user));
+        }
+        localStorage.setItem(STORAGE.FULL_RESP, JSON.stringify(response));
+    }
+
+    // Navigate to Dashboard
+    function navigateToDashboard() {
+        window.location.href = "{{ route('dashboard') }}";
+    }
+
+    // Login Screen Render
+    function renderLoginScreen() {
+        const loginHtml = `
+            <div class="login-wrapper">
+                <div class="login-container">
+                    <div class="brand-area">
+                        <div class="ev-logo">
+                            <img src="https://evcircle.lk/logo.png" alt="EvCircle Logo" class="ev-icon" />
+                            <div class="brand-name">EVCircle</div>
+                        </div>
+                        <div class="tagline">Smart EV Charging · Seamless Access</div>
+                    </div>
+                    <div class="form-wrapper">
+                        <form id="loginFormElement">
+                            <div class="input-group">
+                                <label class="input-label">Email or Phone</label>
+                                <input type="text" id="identifierInput" class="input-field" placeholder="hello@evcircle.com or +94771234567" autocomplete="username" />
+                                <div id="identifierFieldError" class="error-message"></div>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Password</label>
+                                <input type="password" id="passwordInput" class="input-field" placeholder="••••••••" autocomplete="current-password" />
+                                <div id="passwordFieldError" class="error-message"></div>
+                            </div>
+                            <button type="submit" id="loginActionBtn" class="login-btn">
+                                <span id="loginBtnText">Sign in</span>
+                                <span id="loginSpinner" style="display: none;" class="spinner"></span>
+                            </button>
+                            <div class="auth-footer">
+                                <button type="button" id="backButtonAction" class="footer-link"> Back</button>
+                                <button type="button" id="registerButtonAction" class="footer-link">Create an account</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById("appRoot").innerHTML = loginHtml;
+        
+        const form = document.getElementById("loginFormElement");
+        const identifierInput = document.getElementById("identifierInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const loginBtn = document.getElementById("loginActionBtn");
+        const btnTextSpan = document.getElementById("loginBtnText");
+        const spinnerSpan = document.getElementById("loginSpinner");
+        const identError = document.getElementById("identifierFieldError");
+        const passError = document.getElementById("passwordFieldError");
+        
+        function clearErrors() {
+            identError.textContent = '';
+            passError.textContent = '';
+        }
+        
+        async function submitLogin(e) {
+            e.preventDefault();
+            const identifier = identifierInput.value.trim();
+            const password = passwordInput.value;
+            clearErrors();
+            
+            if (!identifier) {
+                identError.textContent = 'Email or phone number required';
+                return;
+            }
+            if (!password) {
+                passError.textContent = 'Password is required';
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            btnTextSpan.style.display = 'none';
+            spinnerSpan.style.display = 'inline-block';
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 14000);
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY,
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({ email: identifier, password: password }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch(e) {
+                    throw new Error('Invalid API response');
+                }
+                
+                if (response.ok && (data.access_token || data.message?.toLowerCase().includes('success'))) {
+                    saveLoginData(data);
+                    showToast(`✅ Welcome ${data.user?.first_name || identifier}! Redirecting...`, false);
+                    setTimeout(() => {
+                        navigateToDashboard();
+                    }, 800);
+                } else {
+                    const errMsg = data.message || data.error || 'Authentication failed';
+                    showToast(`❌ ${errMsg}`, true);
+                    identError.textContent = errMsg;
+                }
+            } catch (err) {
+                let errorText = err.message || 'Network error';
+                if (err.name === 'AbortError') errorText = 'Request timeout';
+                showToast(`⚠️ ${errorText}`, true);
+                identError.textContent = errorText;
+            } finally {
+                loginBtn.disabled = false;
+                btnTextSpan.style.display = 'inline-flex';
+                spinnerSpan.style.display = 'none';
+            }
+        }
+        
+        form.addEventListener('submit', submitLogin);
+        document.getElementById("backButtonAction")?.addEventListener("click", () => {
+            window.history.back();
+            showToast("← Going back", false);
+        });
+        document.getElementById("registerButtonAction")?.addEventListener("click", () => {
+            showToast("📝 Contact EvCircle support to create an account", false);
+            setTimeout(() => {
+                alert("EvCircle Registration\n\nVisit https://evcircle.lk or contact support@evcircle.lk");
+            }, 200);
+        });
+    }
+    
+    // Check if already logged in, redirect to dashboard
+    function checkAuthAndRedirect() {
+        const token = localStorage.getItem(STORAGE.TOKEN);
+        if (token) {
+            window.location.href = "dashboard.html";
+        } else {
+            renderLoginScreen();
+        }
+    }
+    
+    checkAuthAndRedirect();
+</script>
+</body>
+</html>

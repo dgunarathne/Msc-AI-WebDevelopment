@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>EVCircle | Smart EV Charging Network - Sri Lanka</title>
+    <!-- TailwindCSS + Font Awesome Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Leaflet CSS & JS for interactive map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        evgreen: '#00E676',
+                        evdark: '#0A0A0A',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow-pulse': 'glowPulse 2.5s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        glowPulse: {
+                            '0%, 100%': { opacity: 0.6, transform: 'scale(1)' },
+                            '50%': { opacity: 1, transform: 'scale(1.05)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: #000000;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* TRANSPARENT NAVBAR */
+        .nav-transparent {
+            background: rgba(0, 0, 0, 0);
+            backdrop-filter: blur(0px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-blur {
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00E676;
+            border-radius: 8px;
+        }
+
+        /* phone mockup inner glow */
+        .phone-glow {
+            box-shadow: 0 20px 40px -12px rgba(0, 230, 118, 0.3), 0 0 0 6px rgba(0, 230, 118, 0.15);
+        }
+
+        /* map pulse effect */
+        .map-dot-pulse {
+            box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7);
+            animation: pulse-green 1.8s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(0, 230, 118, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 230, 118, 0);
+            }
+        }
+
+        /* Leaflet map custom styles */
+        .leaflet-container {
+            background: #0a0f0a;
+            border-radius: 1.5rem;
+            z-index: 5;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: #1a1f1a;
+            color: white;
+            border-left: 4px solid #00E676;
+            border-radius: 12px;
+        }
+
+        .leaflet-popup-tip {
+            background: #1a1f1a;
+        }
+
+        .leaflet-control-zoom a {
+            background-color: #1a1f1a;
+            color: #00E676;
+            border: none;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background-color: #2a2f2a;
+        }
+
+        .custom-marker {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+        }
+    </style>
+</head>
+
+<body class="bg-black text-white overflow-x-hidden">
+
+    <!-- Navbar with FULL TRANSPARENT background -->
+    <nav id="navbar" class="fixed w-full z-50 top-0 transition-all duration-300 nav-transparent">
+        <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4 md:px-6">
+            <a href="#" class="flex items-center space-x-3 group">
+                <div class="relative">
+                    <div
+                        class="w-10 h-10 rounded-full bg-gradient-to-br from-evgreen to-green-700 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-charging-station text-black text-lg"></i>
+                    </div>
+                    <div
+                        class="absolute inset-0 rounded-full bg-evgreen/30 blur-md group-hover:bg-evgreen/40 transition">
+                    </div>
+                </div>
+                <span
+                    class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-evgreen bg-clip-text text-transparent">EVCircle</span>
+            </a>
+
+            <div class="flex md:order-2 gap-3 items-center">
+                <button id="ctaBtn" onclick="goToPage()"
+                    class="text-white bg-evgreen hover:bg-green-400 transition-all duration-300 font-medium rounded-full px-5 py-2 shadow-lg shadow-evgreen/30 text-sm md:text-base flex items-center">
+
+                    <i class="fas fa-bolt mr-1"></i>
+                    <span id="ctaText" class="inline-block w-[160px] text-left"></span>
+                </button>
+
+                <script>
+                    const textEl = document.getElementById("ctaText");
+
+                    const items = [
+                        { text: "Get Started", link: "{{ route('login') }}" },
+                        { text: "Add Charger", link: "{{ route('add-charge') }}" }
+                    ];
+
+                    let wordIndex = 0;
+                    let charIndex = 0;
+                    let isDeleting = false;
+
+                    function typeEffect() {
+                        const currentWord = items[wordIndex].text;
+
+                        if (!isDeleting) {
+                            textEl.innerText = currentWord.substring(0, charIndex + 1);
+                            charIndex++;
+
+                            if (charIndex === currentWord.length) {
+                                isDeleting = true;
+                                setTimeout(typeEffect, 1200);
+                                return;
+                            }
+                        } else {
+                            textEl.innerText = currentWord.substring(0, charIndex - 1);
+                            charIndex--;
+
+                            if (charIndex === 0) {
+                                isDeleting = false;
+                                wordIndex = (wordIndex + 1) % items.length;
+                            }
+                        }
+
+                        setTimeout(typeEffect, isDeleting ? 60 : 100);
+                    }
+
+                    typeEffect();
+
+                    function goToPage() {
+                        window.location.href = items[wordIndex].link;
+                    }
+                </script>
+                <button id="mobile-menu-button" type="button"
+                    class="md:hidden inline-flex items-center p-2 w-10 h-10 justify-center text-white rounded-full hover:bg-white/10 transition focus:outline-none">
+                    <span class="sr-only">Open menu</span>
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="mobile-menu" class="hidden w-full md:flex md:w-auto md:order-1 mt-4 md:mt-0 transition-all">
+                <ul
+                    class="flex flex-col md:flex-row md:space-x-8 space-y-3 md:space-y-0 bg-black/60 md:bg-transparent rounded-2xl p-5 md:p-0 backdrop-blur-md md:backdrop-blur-none border border-white/10 md:border-0">
+                    <li><a href="#" class="text-evgreen font-semibold flex items-center gap-1">Home</a></li>
+                    <li><a href="#map-section"
+                            class="text-gray-200 hover:text-evgreen transition flex items-center gap-1">Map</a></li>
+                    <li><a href="#" class="text-gray-200 hover:text-evgreen transition flex items-center gap-1">App</a>
+                    </li>
+                    <li><a href="#"
+                            class="text-gray-200 hover:text-evgreen transition flex items-center gap-1">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section
+        class="relative flex flex-col lg:flex-row items-center justify-between min-h-screen px-6 pt-28 pb-16 md:pt-32 gap-12 max-w-7xl mx-auto">
+        <div
+            class="absolute w-[600px] h-[600px] bg-evgreen/15 blur-[140px] top-[-180px] left-[-200px] rounded-full animate-pulse-slow">
+        </div>
+        <div
+            class="absolute w-[500px] h-[500px] bg-evgreen/10 blur-[130px] bottom-[-100px] right-[-150px] rounded-full">
+        </div>
+
+        <div class="flex-1 text-center lg:text-left z-10 max-w-xl">
+            <div
+                class="inline-flex items-center gap-2 bg-white/5 backdrop-blur-sm rounded-full px-4 py-1.5 border border-evgreen/30 mb-6">
+                <span class="relative flex h-2 w-2">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-evgreen opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-evgreen"></span>
+                </span>
+                <span class="text-xs font-mono text-evgreen tracking-wide">🇱🇰 SRI LANKA WIDE NETWORK</span>
+            </div>
+
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight">
+                Power Every Journey in
+                <span class="text-evgreen bg-gradient-to-r from-evgreen to-green-300 bg-clip-text text-transparent">Sri
+                    Lanka</span>
+            </h1>
+
+            <p class="mt-6 text-gray-300 text-lg md:text-xl leading-relaxed">
+                From Colombo to Kandy, Galle to Jaffna — EVCircle brings ultra-fast EV charging across the island.
+                Seamless, renewable-powered, and always ready for you.
+            </p>
+
+            <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <a href="#map-section"
+                    class="group px-7 py-3.5 bg-evgreen text-black font-semibold rounded-xl hover:bg-green-400 transition-all duration-300 flex items-center justify-center gap-2 shadow-xl shadow-evgreen/30">
+                    <i class="fas fa-map-marked-alt"></i> Explore Live Map
+                    <i class="fas fa-arrow-right group-hover:translate-x-1 transition"></i>
+                </a>
+                <a href="#"
+                    class="px-7 py-3.5 border-2 border-evgreen/70 text-evgreen rounded-xl hover:bg-evgreen hover:text-black transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-sm">
+                    <i class="fab fa-android"></i> <i class="fab fa-apple"></i> Download App
+                </a>
+            </div>
+
+            <div class="mt-12 grid grid-cols-3 gap-4 sm:gap-8 text-center">
+                <div class="bg-white/5 backdrop-blur-sm rounded-2xl p-3 border border-white/10">
+                    <div class="text-white text-xl md:text-2xl font-bold flex items-center justify-center gap-1"><i
+                            class="fas fa-map-marker-alt text-evgreen"></i> 85<span class="text-evgreen">+</span></div>
+                    <div class="text-gray-400 text-sm">Stations Island-wide</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-2xl p-3 border border-white/10">
+                    <div class="text-white text-xl md:text-xl font-bold flex items-center justify-center gap-1"><i
+                            class="far fa-clock text-evgreen"></i> 24/7</div>
+                    <div class="text-gray-400 text-sm">Rapid Support</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-2xl p-3 border border-white/10">
+                    <div class="text-white text-xl md:text-xl font-bold flex items-center justify-center gap-1"><i
+                            class="fas fa-solar-panel text-evgreen"></i> 100%</div>
+                    <div class="text-gray-400 text-sm">Green Energy</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phone Mockup -->
+        <div class="flex-1 flex justify-center lg:justify-end z-10 relative">
+            <div class="relative animate-float">
+                <div
+                    class="relative w-[280px] sm:w-[320px] md:w-[360px] rounded-[3rem] bg-gradient-to-br from-gray-900 to-black border-4 border-gray-700/50 shadow-2xl phone-glow">
+                    <div
+                        class="absolute top-0 left-1/2 transform -translate-x-1/2 w-36 h-7 bg-black rounded-b-2xl flex justify-center items-center gap-1 z-20">
+                        <div class="w-2 h-2 rounded-full bg-evgreen/70"></div>
+                        <div class="w-16 h-3 bg-gray-800 rounded-full"></div>
+                    </div>
+                    <div class="rounded-[2.5rem] overflow-hidden bg-gradient-to-b from-black to-gray-900">
+                        <div class="pt-10 pb-6 px-4 flex flex-col items-center">
+                            <div class="w-full bg-white/5 rounded-2xl p-3 mb-3 backdrop-blur-sm">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            class="w-8 h-8 bg-evgreen/20 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-map text-evgreen text-sm"></i>
+                                        </div>
+                                        <span class="text-xs font-semibold">Live Map • Sri Lanka</span>
+                                    </div>
+                                    <i class="fas fa-location-dot text-evgreen text-xs"></i>
+                                </div>
+                            </div>
+                            <div
+                                class="relative w-full bg-gray-900/60 rounded-2xl p-3 mb-4 border border-evgreen/30 shadow-inner">
+                                <div
+                                    class="relative h-40 w-full bg-gradient-to-br from-green-900/20 to-gray-800/50 rounded-xl overflow-hidden">
+                                    <div class="relative w-full h-full">
+                                        <i
+                                            class="fas fa-map text-gray-600 absolute text-6xl opacity-30 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>
+                                        <div class="absolute top-4 left-8 flex flex-col items-center map-dot-pulse">
+                                            <div class="w-3 h-3 bg-evgreen rounded-full"></div>
+                                            <span class="text-[8px] text-evgreen mt-0.5">Colombo</span>
+                                        </div>
+                                        <div class="absolute top-12 right-10 flex flex-col items-center map-dot-pulse"
+                                            style="animation-delay: 0.3s;">
+                                            <div class="w-3 h-3 bg-evgreen rounded-full"></div>
+                                            <span class="text-[8px] text-evgreen">Kandy</span>
+                                        </div>
+                                        <div class="absolute bottom-10 left-12 flex flex-col items-center map-dot-pulse"
+                                            style="animation-delay: 0.6s;">
+                                            <div class="w-3 h-3 bg-evgreen rounded-full"></div>
+                                            <span class="text-[8px] text-evgreen">Galle</span>
+                                        </div>
+                                        <div class="absolute top-20 left-1/3 flex flex-col items-center map-dot-pulse"
+                                            style="animation-delay: 0.9s;">
+                                            <div class="w-3 h-3 bg-evgreen rounded-full"></div>
+                                            <span class="text-[8px] text-evgreen">Jaffna</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between mt-3 text-[11px] text-gray-300">
+                                    <span><i class="fas fa-charging-station text-evgreen"></i> 24 Active hubs</span>
+                                    <span><i class="fas fa-route"></i> Coverage 9 Provinces</span>
+                                </div>
+                            </div>
+                            <div class="w-full flex flex-col gap-2 mb-4">
+                                <div class="flex justify-between items-center bg-black/40 rounded-xl p-2">
+                                    <div class="flex items-center gap-2"><i
+                                            class="fab fa-android text-evgreen"></i><span class="text-sm">Android
+                                            App</span></div>
+                                    <span class="text-xs text-evgreen">Download</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-black/40 rounded-xl p-2">
+                                    <div class="flex items-center gap-2"><i class="fab fa-apple text-evgreen"></i><span
+                                            class="text-sm">iOS App</span></div>
+                                    <span class="text-xs text-evgreen">App Store</span>
+                                </div>
+                            </div>
+                            <button
+                                class="w-full bg-evgreen/90 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm shadow-lg transition hover:bg-evgreen">
+                                <i class="fas fa-bolt"></i> Reserve Charging Slot
+                            </button>
+                        </div>
+                    </div>
+                    <div
+                        class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gray-700 rounded-full">
+                    </div>
+                </div>
+                <div
+                    class="absolute z-40 -top-5 -right-4 md:-right-8 bg-evgreen/90 backdrop-blur-md rounded-full px-4 py-1.5 shadow-xl animate-bounce border border-white/20">
+                    <div class="flex items-center gap-1 text-white font-bold text-sm"><i class="fas fa-leaf"></i>
+                        Island‑wide Green</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== INTERACTIVE MAP SECTION WITH LATITUDE / LONGITUDE ========== -->
+    <section id="map-section" class="relative max-w-7xl mx-auto px-6 py-16 z-10 scroll-mt-20">
+        <div class="text-center mb-8">
+            <div
+                class="inline-flex items-center gap-2 bg-evgreen/10 backdrop-blur-sm rounded-full px-4 py-1.5 border border-evgreen/30 mb-4">
+                <i class="fas fa-map-pin text-evgreen text-xs"></i>
+                <span class="text-xs font-mono text-evgreen tracking-wide">LIVE CHARGER LOCATIONS</span>
+            </div>
+            <h2
+                class="text-3xl md:text-5xl font-bold bg-gradient-to-r from-white to-evgreen bg-clip-text text-transparent">
+                Find Your Nearest EV Charger</h2>
+            <p class="text-gray-400 mt-3 max-w-2xl mx-auto">Real-time locations across Sri Lanka using precise
+                coordinates. Click on any marker for details.</p>
+        </div>
+
+        <!-- Map Container -->
+        <div class="relative w-full rounded-2xl overflow-hidden border border-evgreen/30 shadow-2xl shadow-evgreen/10">
+            <div id="evMap" style="height: 500px; width: 100%; z-index: 10;"></div>
+
+            <!-- Map Legend -->
+            <div
+                class="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md rounded-xl p-3 z-20 border border-evgreen/40 text-xs flex flex-col gap-1">
+                <div class="flex items-center gap-2"><i class="fas fa-charging-station text-evgreen text-sm"></i><span
+                        class="text-white">Active Charger</span></div>
+                <div class="flex items-center gap-2"><i class="fas fa-bolt text-yellow-400 text-sm"></i><span
+                        class="text-white">Ultra-Fast (150kW+)</span></div>
+                <div class="flex items-center gap-2"><i class="fas fa-leaf text-green-400 text-sm"></i><span
+                        class="text-white">Solar Powered</span></div>
+            </div>
+
+            <!-- Coordinates helper text -->
+            <div
+                class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 z-20 text-[10px] text-gray-300 font-mono">
+                <i class="fas fa-crosshairs mr-1 text-evgreen"></i> Live Coordinates | 85+ Stations
+            </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+                <p class="text-evgreen font-bold text-lg">Secure Payments</p>
+                <p class="text-xs text-gray-400">Powered by payhere</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+                <p class="text-evgreen font-bold text-lg">Mobile</p>
+                <p class="text-xs text-gray-400">Easy Access App</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+                <p class="text-evgreen font-bold text-lg">150kW+</p>
+                <p class="text-xs text-gray-400">Ultra-Fast Chargers</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+                <p class="text-evgreen font-bold text-lg">24/7</p>
+                <p class="text-xs text-gray-400">Real-time Availability</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <div class="relative max-w-7xl mx-auto px-6 py-12 mb-8 z-10">
+        <div class="text-center mb-10">
+            <h2
+                class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white to-evgreen bg-clip-text text-transparent">
+                Supercharge Sri Lanka</h2>
+            <p class="text-gray-400 mt-2">From cities to highways — everywhere you drive.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div
+                class="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10 hover:border-evgreen/40 transition duration-300 group">
+                <div
+                    class="relative mx-auto w-16 h-16 bg-evgreen/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                    <i class="fas fa-map-marked-alt text-evgreen text-3xl"></i>
+                </div>
+                <h4 class="text-lg font-semibold">🇱🇰 Sri Lanka Wide Network</h4>
+                <p class="text-gray-400 text-sm mt-2">85+ fast-charging stations with precise GPS coordinates. Real-time
+                    availability updates.</p>
+            </div>
+            <div
+                class="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10 hover:border-evgreen/40 transition duration-300 group">
+                <div
+                    class="relative mx-auto w-16 h-16 bg-evgreen/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                    <div class="flex gap-2"><i class="fab fa-android text-evgreen text-2xl"></i><i
+                            class="fab fa-apple text-evgreen text-2xl"></i></div>
+                </div>
+                <h4 class="text-lg font-semibold">Android · iOS Support</h4>
+                <p class="text-gray-400 text-sm mt-2">Download the EVCircle app for live map tracking, route planning,
+                    and contactless payments.</p>
+                <div class="flex justify-center gap-4 mt-3"><i
+                        class="fab fa-google-play text-gray-400 hover:text-evgreen transition text-xl"></i><i
+                        class="fab fa-app-store-ios text-gray-400 hover:text-evgreen transition text-xl"></i></div>
+            </div>
+            <div
+                class="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10 hover:border-evgreen/40 transition duration-300 group">
+                <div
+                    class="relative mx-auto w-16 h-16 bg-evgreen/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                    <i class="fas fa-plus-circle text-evgreen text-3xl"></i>
+                </div>
+                <h4 class="text-lg font-semibold">Add Your Charger</h4>
+                <p class="text-gray-400 text-sm mt-2">Own a charging station? Join our partner network. List your
+                    charger and earn revenue.</p>
+                <button
+                    class="mt-3 bg-evgreen/20 text-evgreen text-sm px-4 py-1.5 rounded-full flex items-center gap-1 mx-auto hover:bg-evgreen hover:text-black transition"><i
+                        class="fas fa-bolt"></i> Become Partner</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800/40 pt-12 pb-8 relative z-10 bg-black/40 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 bg-evgreen/20 rounded-full flex items-center justify-center"><i
+                                class="fas fa-charging-station text-evgreen text-sm"></i></div><span
+                            class="font-bold text-xl tracking-tight">EVCircle</span>
+                    </div>
+                    <p class="text-gray-400 text-sm">Empowering Sri Lanka's electric future with renewable energy and
+                        nationwide charging infrastructure.</p>
+                </div>
+                <div>
+                    <h5 class="text-white font-semibold mb-3">Network</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#map-section" class="hover:text-evgreen transition">Charger Map</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Add Your Charger</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Partner Stations</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Sri Lanka Coverage</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-white font-semibold mb-3">Support</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-evgreen transition">Android / iOS App</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Help Center</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">EV FAQs</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-white font-semibold mb-3">Legal</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-evgreen transition">Privacy</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-evgreen transition">Charger Agreement</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div
+                class="border-t border-gray-800/40 pt-6 flex flex-col md:flex-row justify-between items-center text-gray-500 text-xs gap-4">
+                <div class="flex gap-6"><a href="#" class="hover:text-evgreen transition"><i
+                            class="fab fa-twitter"></i></a><a href="#" class="hover:text-evgreen transition"><i
+                            class="fab fa-instagram"></i></a><a href="#" class="hover:text-evgreen transition"><i
+                            class="fab fa-linkedin-in"></i></a><a href="#" class="hover:text-evgreen transition"><i
+                            class="fab fa-facebook"></i></a></div>
+                <p>© 2025 EVCircle – Powering the Sri Lanka with Seamless EV Charging. All rights reserved.</p>
+                <div class="flex gap-2"><i class="fas fa-mobile-alt text-evgreen"></i><span>iOS · Android · Web</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Map Initialization Script with Real Coordinates -->
+    <script>
+        // Wait for DOM fully loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            // Sri Lanka Center Coordinates
+            const sriLankaCenter = [7.8731, 80.7718];
+
+            // Initialize the map
+            const map = L.map('evMap').setView(sriLankaCenter, 8);
+
+            // Custom dark tile layer (matches website theme)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+                subdomains: 'abcd',
+                maxZoom: 18,
+                minZoom: 6
+            }).addTo(map);
+
+            // Custom EV Charger Icon
+            const evIcon = L.divIcon({
+                html: '<div class="flex items-center justify-center w-8 h-8 bg-evgreen rounded-full shadow-lg border-2 border-white"><i class="fas fa-charging-station text-black text-sm"></i></div>',
+                className: 'custom-marker',
+                iconSize: [32, 32],
+                popupAnchor: [0, -16]
+            });
+
+            const fastChargerIcon = L.divIcon({
+                html: '<div class="flex items-center justify-center w-9 h-9 bg-yellow-500 rounded-full shadow-lg border-2 border-white animate-pulse"><i class="fas fa-bolt text-black text-sm"></i></div>',
+                className: 'custom-marker',
+                iconSize: [36, 36],
+                popupAnchor: [0, -18]
+            });
+
+            // Charger Stations Data (Latitude, Longitude, Name, Details, Type)
+            const chargingStations = [
+                { lat: 6.9271, lng: 79.8612, name: "Colombo City Center", address: "Colombo 01, Union Place", power: "150kW Ultra-Fast", slots: 4, type: "ultra", available: true, price: "LKR 65/kWh" },
+                { lat: 6.9145, lng: 79.8560, name: "Bambalapitiya Hub", address: "Galle Road, Colombo 04", power: "60kW Fast", slots: 2, type: "standard", available: true, price: "LKR 55/kWh" },
+                { lat: 7.2906, lng: 80.6354, name: "Kandy Central", address: "Kandy City Center", power: "120kW Fast", slots: 3, type: "ultra", available: true, price: "LKR 60/kWh" },
+                { lat: 6.0322, lng: 80.2156, name: "Galle Fort Station", address: "Galle Fort Area", power: "75kW Fast", slots: 2, type: "standard", available: false, price: "LKR 58/kWh" },
+                { lat: 9.6615, lng: 80.0255, name: "Jaffna Central", address: "Jaffna Town", power: "100kW Fast", slots: 2, type: "standard", available: true, price: "LKR 62/kWh" },
+                { lat: 7.7084, lng: 81.6946, name: "Batticaloa Hub", address: "Batticaloa City", power: "50kW", slots: 1, type: "standard", available: true, price: "LKR 52/kWh" },
+                { lat: 6.8492, lng: 79.8872, name: "Dehiwala EV Hub", address: "Dehiwala-Mount Lavinia", power: "150kW Ultra-Fast", slots: 4, type: "ultra", available: true, price: "LKR 68/kWh" },
+                { lat: 7.3374, lng: 79.8381, name: "Negombo Beach Charger", address: "Negombo Coastal Rd", power: "90kW Fast", slots: 2, type: "standard", available: true, price: "LKR 56/kWh" },
+                { lat: 6.8755, lng: 79.8720, name: "Nugegoda Junction", address: "High Level Road, Nugegoda", power: "60kW", slots: 2, type: "standard", available: true, price: "LKR 54/kWh" },
+                { lat: 7.8884, lng: 80.6518, name: "Dambulla Gateway", address: "Dambulla City", power: "80kW Fast", slots: 2, type: "standard", available: true, price: "LKR 57/kWh" },
+                { lat: 6.4364, lng: 80.0107, name: "Kalutara South", address: "Kalutara Beach Road", power: "50kW", slots: 1, type: "standard", available: true, price: "LKR 50/kWh" },
+                { lat: 8.5833, lng: 81.2333, name: "Trincomalee Port", address: "Trincomalee City", power: "100kW Fast", slots: 2, type: "ultra", available: false, price: "LKR 63/kWh" }
+            ];
+
+            // Add markers to map
+            chargingStations.forEach(station => {
+                const icon = station.type === 'ultra' ? fastChargerIcon : evIcon;
+                const availabilityStatus = station.available ? '<span class="text-evgreen text-xs"><i class="fas fa-circle"></i> Available</span>' : '<span class="text-red-400 text-xs"><i class="fas fa-circle"></i> In Use</span>';
+
+                const popupContent = `
+                    <div class="p-2 min-w-[200px]">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fas fa-charging-station text-evgreen text-lg"></i>
+                            <h3 class="font-bold text-white text-base">${station.name}</h3>
+                        </div>
+                        <p class="text-gray-300 text-xs mb-1"><i class="fas fa-location-dot text-evgreen mr-1"></i> ${station.address}</p>
+                        <p class="text-gray-300 text-xs mb-1"><i class="fas fa-bolt text-yellow-400 mr-1"></i> ${station.power}</p>
+                        <p class="text-gray-300 text-xs mb-1"><i class="fas fa-parking mr-1"></i> ${station.slots} slots available</p>
+                        <p class="text-evgreen font-bold text-sm mb-2">${station.price}</p>
+                        <div class="flex justify-between items-center mt-1">
+                            ${availabilityStatus}
+                            <button class="bg-evgreen/20 hover:bg-evgreen text-evgreen hover:text-black px-2 py-1 rounded text-xs transition"><i class="fas fa-bolt"></i> Reserve</button>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-2"><i class="fas fa-map-marker-alt"></i> ${station.lat.toFixed(4)}°N, ${station.lng.toFixed(4)}°E</p>
+                    </div>
+                `;
+
+                L.marker([station.lat, station.lng], { icon: icon })
+                    .addTo(map)
+                    .bindPopup(popupContent);
+            });
+
+            // Add a custom control to show coordinates on click
+            map.on('click', function (e) {
+                const lat = e.latlng.lat.toFixed(5);
+                const lng = e.latlng.lng.toFixed(5);
+                const tempPopup = L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(`📍 <b>Coordinates:</b><br>Latitude: ${lat}°N<br>Longitude: ${lng}°E<br><small class="text-evgreen">Click to add charger location</small>`)
+                    .openOn(map);
+                setTimeout(() => { map.closePopup(tempPopup); }, 3000);
+            });
+
+            // Add scale bar
+            L.control.scale({ metric: true, imperial: false, position: 'bottomleft' }).addTo(map);
+        });
+    </script>
+
+    <!-- Navbar scroll + mobile menu -->
+    <script>
+        (function () {
+            const navbar = document.getElementById('navbar');
+            const mobileBtn = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            function handleNavScroll() {
+                if (window.scrollY > 15) {
+                    navbar.classList.add('nav-blur');
+                    navbar.classList.remove('nav-transparent');
+                } else {
+                    navbar.classList.add('nav-transparent');
+                    navbar.classList.remove('nav-blur');
+                }
+            }
+            handleNavScroll();
+            window.addEventListener('scroll', handleNavScroll);
+
+            if (mobileBtn && mobileMenu) {
+                mobileBtn.addEventListener('click', function () {
+                    const isHidden = mobileMenu.classList.contains('hidden');
+                    if (isHidden) {
+                        mobileMenu.classList.remove('hidden');
+                        mobileMenu.style.animation = 'fadeSlideDown 0.2s ease forwards';
+                    } else {
+                        mobileMenu.classList.add('hidden');
+                    }
+                });
+                const menuLinks = mobileMenu.querySelectorAll('a');
+                menuLinks.forEach(link => {
+                    link.addEventListener('click', () => { mobileMenu.classList.add('hidden'); });
+                });
+            }
+
+            const styleSheet = document.createElement("style");
+            styleSheet.textContent = `
+                @keyframes fadeSlideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+                .nav-transparent { background: rgba(0, 0, 0, 0); backdrop-filter: blur(0px); }
+                .nav-blur { background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(12px); }
+                button:active { transform: scale(0.98); }
+                .phone-glow { animation: softGlow 3s infinite alternate; }
+                @keyframes softGlow { 0% { box-shadow: 0 20px 30px -12px rgba(0,230,118,0.2), 0 0 0 4px rgba(0,230,118,0.05); } 100% { box-shadow: 0 25px 45px -10px rgba(0,230,118,0.45), 0 0 0 8px rgba(0,230,118,0.2); } }
+                @media (max-width: 768px) { .animate-float { animation: none; } }
+            `;
+            document.head.appendChild(styleSheet);
+        })();
+    </script>
+</body>
+
+</html>

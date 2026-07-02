@@ -1,0 +1,122 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'ap-southeast-1'
+        ASG_NAME = 'evc-asg'
+        REPO_DIR = 'evcircle'
+    }
+
+    stages {
+        stage('Clean Existing Repo Folder') {
+            steps {
+                echo "🧹 Checking for existing $REPO_DIR directory..."
+                sh '''
+                    if [ -d "$REPO_DIR" ]; then
+                        echo "⚠️ Directory $REPO_DIR exists. Deleting it..."
+                        rm -rf $REPO_DIR
+                    else
+                        echo "✅ No existing $REPO_DIR directory found."
+                    fi
+                '''
+            }
+        }
+
+        stage('Clone Code') {
+            steps {
+                sshagent(credentials: ['ubuntu']) {
+                    sh '''
+                        echo "🔄 Cloning repository..."
+                        git clone git@gitlab.com:dgunarathne/evcircle.git
+                    '''
+                }
+            }
+        }
+
+        stage('Fetch ASG EC2 Private IPs') {
+            steps {
+                script {
+                    sh '''
+                        echo "🔍 Fetching instance IDs in ASG: $ASG_NAME..."
+
+                        INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+                            --region $AWS_REGION \
+                            --auto-scaling-group-names $ASG_NAME \
+                            --query "AutoScalingGroups[*].Instances[*].InstanceId" \
+                            --output text)
+
+                        if [ -z "$INSTANCE_IDS" ]; then
+                            echo "❌ No instances found in ASG: $ASG_NAME"
+                            exit 1
+                        fi
+
+                        echo "✅ Instance IDs: $INSTANCE_IDS"
+
+                        echo "🔍 Fetching Private IPs..."
+                        PRIVATE_IPS=$(aws ec2 describe-instances \
+                            --region $AWS_REGION \
+                            --instance-ids $INSTANCE_IDS \
+                            --query "Reservations[*].Instances[*].PrivateIpAddress" \
+                            --output text)
+
+                        if [ -z "$PRIVATE_IPS" ]; then
+                            echo "❌ Could not fetch private IPs."
+                            exit 1
+                        fi
+
+                        echo "$PRIVATE_IPS" > ec2_ips.txt
+                        echo "✅ Private IPs of ASG Instances:"
+                        cat ec2_ips.txt
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to ASG EC2 Instances') {
+            steps {
+                sshagent(credentials: ['ubuntu']) {
+                    sh '''
+                        for ip in $(cat ec2_ips.txt); do
+                            echo "🚀 Deploying to $ip..."
+                            ssh -o StrictHostKeyChecking=no -i new-ec2.pem ubuntu@$ip '
+                                if [ ! -d /var/www/evcircle ]; then
+                                    echo "Creating target directory..."
+                                    mkdir -p /var/www/evcircle
+                                fi
+
+                                echo "Pulling latest changes..."
+                                cd /var/www/evcircle &&
+                                git pull origin main || echo "⚠️ Git pull failed."
+                                
+                                sudo systemctl restart apache2 || echo "⚠️ Failed to restart Apache."
+                            '
+                        done
+                    '''
+                }
+            }
+        }
+
+        stage('Clean Up Cloned Repo') {
+            steps {
+                echo "🧼 Deleting cloned source repo from Jenkins workspace..."
+                sh '''
+                    if [ -d "$REPO_DIR" ]; then
+                        rm -rf $REPO_DIR
+                        echo "✅ Source folder deleted."
+                    else
+                        echo "ℹ️ No source folder to delete."
+                    fi
+                '''
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "❌ Deployment pipeline failed!"
+        }
+        success {
+            echo "✅ Deployment pipeline completed successfully!"
+        }
+    }
+}
