@@ -146,37 +146,12 @@ public function check_confirmed(Request $request){
     }
 
     try {
-        // Get all chargers except user's own
-        $query = EvCharger::query()
-            ->where('user_id', '!=', $user->id);
-
-        // Add search filtering
-        if ($request->has('search') && !empty($request->search)) {
-            $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('station_name', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('location', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('charger_type', 'LIKE', '%' . $searchTerm . '%');
-            });
-        }
-
-        // Location-based sorting if coordinates provided
-        if ($request->has('latitude') && $request->has('longitude')) {
-            $lat = $request->latitude;
-            $lng = $request->longitude;
-
-            // Calculate distance using Haversine formula
-            $query->selectRaw(
-                "*, 
-                (6371 * acos(cos(radians(?)) 
-                * cos(radians(latitude)) 
-                * cos(radians(longitude) - radians(?)) 
-                + sin(radians(?)) 
-                * sin(radians(latitude)))) AS distance",
-                [$lat, $lng, $lat])
-            ->having('distance', '<=', 5000000)  
-            ->orderBy('distance');
-        }
+        $query = EvCharger::nearbyQuery(
+            $user->id,
+            $request->input('search'),
+            $request->has('latitude') ? (float) $request->latitude : null,
+            $request->has('longitude') ? (float) $request->longitude : null,
+        );
 
         // Get pagination parameters
         $page = $request->input('page', 1);
@@ -239,37 +214,12 @@ public function check_confirmed(Request $request){
     }
 
     try {
-        // Get all chargers except user's own
-        $query = EvCharger::query()
-            ->where('user_id', '!=', $user->id);
-
-        // Add search filtering
-        if ($request->has('search') && !empty($request->search)) {
-            $searchTerm = $request->search;
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('station_name', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('location', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('charger_type', 'LIKE', '%' . $searchTerm . '%');
-            });
-        }
-
-        // Location-based sorting if coordinates provided
-        if ($request->has('latitude') && $request->has('longitude')) {
-            $lat = $request->latitude;
-            $lng = $request->longitude;
-
-            // Calculate distance using Haversine formula
-            $query->selectRaw(
-                "*, 
-                (6371 * acos(cos(radians(?)) 
-                * cos(radians(latitude)) 
-                * cos(radians(longitude) - radians(?)) 
-                + sin(radians(?)) 
-                * sin(radians(latitude)))) AS distance",
-                [$lat, $lng, $lat])
-            ->having('distance', '<=', 5000000)  
-            ->orderBy('distance');
-        }
+        $query = EvCharger::nearbyQuery(
+            $user->id,
+            $request->input('search'),
+            $request->has('latitude') ? (float) $request->latitude : null,
+            $request->has('longitude') ? (float) $request->longitude : null,
+        );
 
         // Get pagination parameters
         $page = $request->input('page', 1);

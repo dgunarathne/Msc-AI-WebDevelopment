@@ -35,4 +35,36 @@ class EvCharger extends Model
     return $this->hasMany(Booking::class);
 }
 
+    /**
+     * Base "other people's chargers, nearest first" query shared by
+     * UserController::get_chargers/get_chargersg and the ML recommendation
+     * endpoint, so the geo-filter/search logic has one source of truth.
+     */
+    public static function nearbyQuery(int $excludeUserId, ?string $search, ?float $lat, ?float $lng)
+    {
+        $query = static::query()->where('user_id', '!=', $excludeUserId);
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('station_name', 'LIKE', '%' . $search . '%')
+                  ->orWhere('location', 'LIKE', '%' . $search . '%')
+                  ->orWhere('charger_type', 'LIKE', '%' . $search . '%');
+            });
+        }
+
+        if ($lat !== null && $lng !== null) {
+            $query->selectRaw(
+                "*,
+                (6371 * acos(cos(radians(?))
+                * cos(radians(latitude))
+                * cos(radians(longitude) - radians(?))
+                + sin(radians(?))
+                * sin(radians(latitude)))) AS distance",
+                [$lat, $lng, $lat])
+            ->having('distance', '<=', 5000000)
+            ->orderBy('distance');
+        }
+
+        return $query;
+    }
 }

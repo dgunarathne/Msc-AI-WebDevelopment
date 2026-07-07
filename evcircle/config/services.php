@@ -22,4 +22,11 @@ return [
         'device_type'   => env('TKTEV_DEVICE_TYPE'),
         'signal_mode'   => env('TKTEV_SIGNAL_MODE'),
     ],
+
+    // Python FastAPI ML microservice (waiting-time prediction, station
+    // recommendation, EV range prediction, route optimization).
+    'ml' => [
+        'base_url' => env('ML_SERVICE_URL', 'http://127.0.0.1:8000'),
+        'timeout'  => env('ML_SERVICE_TIMEOUT', 10),
+    ],
 ];

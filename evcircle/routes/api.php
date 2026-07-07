@@ -10,6 +10,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\TransactionContraller;
 use App\Http\Controllers\WalletContraller;
 use App\Http\Controllers\ChargerController;
+use App\Http\Controllers\MlController;
+use App\Http\Controllers\VehicleController;
 
 
 Route::get('/health', function () {
@@ -115,7 +117,18 @@ Route::post('/auth/google', [UserController::class, 'googleLogin']);
         Route::post('/Rechrage_wallet', [WalletContraller::class, 'Rechrage_wallet']);
         Route::get('/transaction_history', [TransactionContraller::class, 'index']);
 
+        // Rider EV profile (used by range prediction / recommendation / route planning)
+        Route::get('/vehicles', [VehicleController::class, 'index']);
+        Route::post('/vehicles', [VehicleController::class, 'store']);
+        Route::put('/vehicles/{id}', [VehicleController::class, 'update']);
 
+        // AI/ML features: waiting-time prediction, station recommendation,
+        // EV range prediction, energy-efficient route planning.
+        Route::post('/ml/wait-time', [MlController::class, 'waitTime']);
+        Route::post('/ml/range-prediction', [MlController::class, 'rangePrediction']);
+        Route::post('/ml/recommend-stations', [MlController::class, 'recommendStations']);
+        Route::post('/ml/route-plan', [MlController::class, 'routePlan']);
+        Route::post('/check_availability_with_wait', [BookingController::class, 'checkAvailabilityWithWait']);
 
     });
 });

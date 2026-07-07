@@ -70,6 +70,38 @@ class BookingController extends Controller
             'booked_times' => $bookedSlots,
         ]);
     }
+
+    /**
+     * Same as checkAvailability, plus an ML-predicted wait time for the
+     * charger right now (feature 1: waiting-time prediction). Additive —
+     * checkAvailability's existing contract is untouched for API compatibility.
+     */
+    public function checkAvailabilityWithWait(
+        Request $request,
+        \App\Services\MlServiceClient $mlServiceClient,
+        \App\Services\QueueStateService $queueStateService,
+    ) {
+        $request->validate([
+            'charger_id' => 'required|exists:ev_chargers,id',
+            'date' => 'required|date',
+        ]);
+
+        $bookedSlots = Booking::where('charger_id', $request->charger_id)
+            ->where('date', $request->date)
+            ->where('status', 'confirmed')
+            ->get(['from_time', 'to_time']);
+
+        $charger = EvCharger::findOrFail($request->charger_id);
+        $queuePayload = $queueStateService->buildQueuePayload($charger);
+        $waitPrediction = $mlServiceClient->predictWaitTime($queuePayload);
+
+        return response()->json([
+            'success' => true,
+            'booked_times' => $bookedSlots,
+            'predicted_wait_minutes' => $waitPrediction['predicted_wait_minutes'] ?? null,
+        ]);
+    }
+
     public function book(Request $request)
 {
     $request->validate([
